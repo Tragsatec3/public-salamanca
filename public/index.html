@@ -50,13 +50,16 @@
   <!-- Proj4js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.4/proj4.js"></script>
   <script src="https://unpkg.com/leaflet-plugins/layer/tile/Google.js"></script>
-
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  
   <script type="text/javascript" src="prov.js"></script>
   <script type="text/javascript" src="municipios.js"></script>
 
 </head>
 <body>
-  <h1>Mapa de Salamanca - ETRS89 UTM</h1>
+  
+  <h1>Mapa de Salamanca</h1> 
+
   <div id="map"></div>
   <!-- Cuadro para mostrar solo las coordenadas en ETRS89 UTM -->
   <div id="coordinates">
@@ -67,7 +70,7 @@
     <button class="copyButton" id="copyYButton">Copiar Y</button>
   </div>
 
-   <script>
+  <script>
     $(document).ready(function() {
       // Obtener parámetros de la URL
       function getQueryParam(param) {
@@ -92,7 +95,7 @@
         map = L.map('map').setView([lat, lng], zoom);
       }
 
- // Capa OSM (OpenStreetMap)
+      // Capa OSM (OpenStreetMap)
       var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 40,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -168,67 +171,30 @@
         "Catastro": catastroLayer,
         "Imagen PNOA": pnoaLayer
       };
+      
+// Añadir capa de provincia y municipios
+var overlay = {
+  "Provincia de Salamanca": L.geoJson(prov, { 
+    style: { "color": "#EB5B00", "weight": 4, "opacity": 0.8 }
+  }).addTo(map),
+  "Municipios Salamanca": L.geoJson(municipios, { 
+    style: { "color": "#3182bd", "weight": 1, "opacity": 3.5 },
+    onEachFeature: function(feature, layer) {
+      if (feature.properties && feature.properties.D_MUN) {
+        layer.bindTooltip(feature.properties.D_MUN, {
+          permanent: false,
+          direction: "top",
+          className: "municipio-css"
+        });
+      }
+    }
+  }).addTo(map)
+};
 
-    //----------------------- Capas de provincia y municipios-----------------
-  var salamancaLayer = L.geoJson(prov, {
-    onEachFeature: onEachLimites,
-    style: estilo_1,
-  }).addTo(map);
+      L.control.layers(baseMaps, overlay, { position: 'topright' }).addTo(map);
+      L.control.scale({ metric: true, imperial: false }).addTo(map);
 
-  var muniLayer = L.geoJson(municipios, {
-    onEachFeature: onEachFeature,
-    style: estilo_2,
-  });
-
-
-  // Mapas agregados en una sola clase
-  var baseMaps = {
-    "Callejero": callejero,
-    "Google Maps": googleLayer,
-    "Open Street Map": osmLayer,
-    "Catastro": catastroLayer
-  };
-
-  // Provincias y municipios en una sola clase
-  var overlay = {
-    "Provincia de Salamanca": salamancaLayer,
-    "Municipios": muniLayer
-  };
-
-// Funciones de popup para cada capa
-function onEachFeature(feature, layer) {
-    var popupContent = feature.properties.D_MUN || "Sin nombre";
-    layer.bindPopup(popupContent);
-  }
-
-  function onEachLimites(feature, layer) {
-    var popupContent = "<b>Salamanca</b>";
-    layer.bindPopup(popupContent);
-  }
-  
-
-//control escala
-L.control.scale({
-    metric: true,
-    imperial: false,
-    maxWidth: 300,
-    position: 'bottomleft'
-}).addTo(map);
-
- // control de los mapas base  
- L.control.layers(baseMaps, null, {
-    position: 'bottomright',
-    collapsed: false
-  }).addTo(map);
-
-  // Control de capas
-  L.control.layers(null, overlay, {
-    position: 'topright',
-    collapsed: false
-  }).addTo(map);
-
-
-  // Actualizar coordenadas al mover el ratón
+      // Actualizar coordenadas al mover el ratón
       function updateCoordinates(e) {
         if (frozenCoords) return;
         var lat = e.latlng.lat;
