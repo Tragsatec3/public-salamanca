@@ -85,7 +85,7 @@
       const y = parseFloat(getQueryParam('y'));                
       const zoom = parseInt(getQueryParam('zoom')) || 9;
 
-      let map = L.map('map').setView([40.9701, -5.6635], 10);
+      let map;
       let frozenCoords = false;
 
       if (!isNaN(x) && !isNaN(y)) {
