@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mapa de Soria</title>
+  <title>Mapa de Salamanca</title>
   
   <!-- Hoja de estilos de Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -85,7 +85,7 @@
       const y = parseFloat(getQueryParam('y'));                
       const zoom = parseInt(getQueryParam('zoom')) || 9;
 
-      let map;
+      let map = L.map('map').setView([40.9701, -5.6635], 10);
       let frozenCoords = false;
 
       if (!isNaN(x) && !isNaN(y)) {
