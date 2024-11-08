@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa de Salamanca - ETRS89 UTM</title>
+  
+  <!-- Hoja de estilos de Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  
+  
+<style>
+    #map { height: 800px; width: 80%; }
+    #coordinates {
+      background-color: rgba(255, 255, 255, 0.8);
+      border: 1px solid #ccc;
+      padding: 10px;
+      position: fixed;
+      bottom: 120px;
+      left: 10px;
+      z-index: 1000;
+    }
+</style>
+  
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Proj4js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.4/proj4.js"></script>
+  <script type="text/javascript" src="prov.js"></script>
+  <script type="text/javascript" src="municipios.js"></script>
+
+</head>
+<body>
+  <h1>Mapa de Salamanca - ETRS89 UTM</h1>
+  <div id="map"></div>
+  
+  <!-- Cuadro para mostrar las coordenadas -->
+  <div id="coordinates">
+    <p><strong>Coordenadas del ratón:</strong></p>
+    <p id="wgs">WGS 84: </p>
+    <p id="etrs">ETRS89 UTM: </p>
+  </div>
+
+  <script> // para leer los parámetros de la URL
+    $(document).ready(function() {
+      function getQueryParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+      }
+
+      // para obtener  los parámetros de latitud, longitud, x, y y zoom de la URL
+      const address = getQueryParam('address');
+      const lat = parseFloat(getQueryParam('lat')) || 40.8374;  // en caso de no existir esa lat, lng o zoom, se asigna un valor por defecto
+      const lng = parseFloat(getQueryParam('lng')) || -6.0287;  
+      const x = parseFloat(getQueryParam('x'));                 
+      const y = parseFloat(getQueryParam('y'));                 
+      const zoom = parseInt(getQueryParam('zoom')) || 9;       
+
+      // Cargar el mapa en las coordenadas que se han introducido
+      var map;
+      if (!isNaN(x) && !isNaN(y)) {
+        // Si se proporcionan x e y, convertimos a lat y long de WGS84
+        var wgsCoords = proj4('+proj=utm +zone=30 +datum=ETRS89 +units=m +no_defs', 'EPSG:4326', [x, y]);
+        map = L.map('map').setView([wgsCoords[1], wgsCoords[0]], zoom);
+      } else {
+        // Si no se dan la x e y directamente se usan lat y long del WGS84
+        map = L.map('map').setView([lat, lng], zoom);
+      }
+      
+
+
+       // Estilos
+  var estilo_1 = {
+    "color": "#EB5B00",
+    "weight": 4,
+    "opacity": 0.8
+  };
+
+  var estilo_2 = {
+    "color": "#3182bd",
+    "weight": 1,
+    "opacity": 3.5
+  };
+
+      //------------------- Mapas base-----------------------
+
+  var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+
+  var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=es&z={z}&x={x}&y={y}', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.google.com/intl/es/help/terms_maps.html">Google Maps</a>'
+  }).addTo(map);
+
+
+	var catastroLayer = L.tileLayer.wms("http://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx?", {
+	   layers: "Catastro",//nombre de la capa (ver get capabilities)
+	   format: 'image/jpeg',
+	   transparent: true,
+	   version: '1.1.1',//wms version (ver get capabilities)
+	   attribution: "DIRECCION GENERAL DEL CATASTRO"
+  });
+  
+  var callejero = L.tileLayer.wms('http://www.ign.es/wms-inspire/ign-base?', {
+      layers: 'IGNBaseTodo', 
+      format: 'image/png',
+      maxZoom: 25,
+      transparent: true,
+      attribution: '© Instituto Geográfico Nacional'
+      }).addTo(map);
+
+
+    //----------------------- Capas de provincia y municipios-----------------
+  var salamancaLayer = L.geoJson(prov, {
+    onEachFeature: onEachLimites,
+    style: estilo_1,
+  }).addTo(map);
+
+  var muniLayer = L.geoJson(municipios, {
+    onEachFeature: onEachFeature,
+    style: estilo_2,
+  });
+
+
+  // Mapas agregados en una sola clase
+  var baseMaps = {
+    "Callejero": callejero,
+    "Google Maps": googleLayer,
+    "Open Street Map": osmLayer,
+    "Catastro": catastroLayer
+  };
+
+  // Provincias y municipios en una sola clase
+  var overlay = {
+    "Provincia de Salamanca": salamancaLayer,
+    "Municipios": muniLayer
+  };
+
+// Funciones de popup para cada capa
+function onEachFeature(feature, layer) {
+    var popupContent = feature.properties.D_MUN || "Sin nombre";
+    layer.bindPopup(popupContent);
+  }
+
+  function onEachLimites(feature, layer) {
+    var popupContent = "<b>Salamanca</b>";
+    layer.bindPopup(popupContent);
+  }
+  
+
+//control escala
+L.control.scale({
+    metric: true,
+    imperial: false,
+    maxWidth: 300,
+    position: 'bottomleft'
+}).addTo(map);
+
+ // control de los mapas base  
+ L.control.layers(baseMaps, null, {
+    position: 'bottomright',
+    collapsed: false
+  }).addTo(map);
+
+  // Control de capas
+  L.control.layers(null, overlay, {
+    position: 'topright',
+    collapsed: false
+  }).addTo(map);
+
+
+  // Definir las proyecciones
+      var wgs84 = 'EPSG:4326'; 
+      var etrs89UTM = '+proj=utm +zone=30 +datum=ETRS89 +units=m +no_defs';
+
+  // Función para actualizar las coordenadas en el cuadro creado
+      function updateCoordinates(e) {
+        var lat = e.latlng.lat; 
+        var lng = e.latlng.lng;
+        
+  // para que muestre las wgs84
+        $('#wgs').text(`WGS 84: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        
+  // para convertir el SRC
+        var etrsCoords = proj4(wgs84, etrs89UTM, [lng, lat]); 
+        
+  // para mostrar las coord en etrs
+        $('#etrs').text(`ETRS89 UTM: X=${etrsCoords[0].toFixed(2)}, Y=${etrsCoords[1].toFixed(2)}`);
+      }
+
+      // evento del desplazamiento ratón
+      map.on('mousemove', updateCoordinates);
+      // Geocodificación
+      if (address) {
+        const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+        
+        $.getJSON(geocodeUrl, function(data) {
+          if (data && data.length > 0) {
+            const { lat, lon } = data[0];
+            map.setView([lat, lon], zoom);
+            L.marker([lat, lon]).addTo(map).bindPopup(`Dirección: ${address}`).openPopup();
+          } else {
+            alert('No se encontró la dirección especificada.');
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
